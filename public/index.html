@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bot Control Interface</title>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            padding: 20px;
+        }
+        .control-buttons button {
+            margin: 5px;
+        }
+        #log {
+            height: 200px;
+            overflow-y: scroll;
+            background-color: #f8f9fa;
+            padding: 10px;
+            border: 1px solid #ddd;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Bot Control Interface</h1>
+        <div class="form-group">
+            <label for="ip">IP:</label>
+            <input type="text" id="ip" class="form-control">
+        </div>
+        <div class="form-group">
+            <label for="port">Port:</label>
+            <input type="text" id="port" class="form-control">
+        </div>
+        <div class="form-group">
+            <label for="botId">Bot ID:</label>
+            <input type="text" id="botId" class="form-control">
+        </div>
+        <button class="btn btn-primary" onclick="connectBot()">Connect Bot</button>
+        
+        <div class="control-buttons mt-4">
+            <button class="btn btn-secondary" onclick="sendCommand('forward')">Forward</button>
+            <button class="btn btn-secondary" onclick="sendCommand('backward')">Backward</button>
+            <button class="btn btn-secondary" onclick="sendCommand('left')">Left</button>
+            <button class="btn btn-secondary" onclick="sendCommand('right')">Right</button>
+            <button class="btn btn-secondary" onclick="sendCommand('stop')">Stop</button>
+            <button class="btn btn-secondary" onclick="sendCommand('jump')">Jump</button>
+            <button class="btn btn-secondary" onclick="sendCommand('sprint')">Sprint</button>
+            <button class="btn btn-secondary" onclick="sendCommand('crouch')">Crouch</button>
+            <button class="btn btn-secondary" onclick="sendCommand('interact')">Interact</button>
+        </div>
+
+        <h2 class="mt-4">Bot Script</h2>
+        <textarea id="script" class="form-control" rows="5"></textarea>
+        <button class="btn btn-success mt-2" onclick="executeScript()">Execute Script</button>
+
+        <h2 class="mt-4">Log</h2>
+        <div id="log"></div>
+    </div>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <script>
+        var socket = io();
+
+        function connectBot() {
+            var ip = document.getElementById('ip').value;
+            var port = document.getElementById('port').value;
+            var botId = document.getElementById('botId').value;
+            fetch('/connect_bot', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ ip: ip, port: port, botId: botId })
+            }).then(response => response.json()).then(data => {
+                if (data.status == 'connected') {
+                    alert('Bot connected');
+                } else {
+                    alert('Bot is already connected or connection failed');
+                }
+            });
+        }
+
+        function sendCommand(command, message = null) {
+            var botId = document.getElementById('botId').value;
+            socket.emit('control_bot', { botId: botId, command: command, message: message });
+        }
+
+        socket.on('bot_response', function(data) {
+            var log = document.getElementById('log');
+            var message = `<div><strong>${data.type}:</strong> ${data.message}</div>`;
+            log.innerHTML += message;
+            log.scrollTop = log.scrollHeight;
+        });
+
+        function executeScript() {
+            var script = document.getElementById('script').value;
+            var commands = script.split('\n');
+            var botId = document.getElementById('botId').value;
+            commands.forEach((command, index) => {
+                setTimeout(() => {
+                    socket.emit('control_bot', { botId: botId, command: command });
+                }, index * 1000); // 1 секунда между командами
+            });
+        }
+    </script>
+</body>
+</html>
